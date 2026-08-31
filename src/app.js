@@ -18,8 +18,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://press-frontend-two.vercel.app',
-  'https://press-frontend.vercel.app',
+  'https://press-backend-beta.vercel.app',
+  'https://press-frontend-two.vercel.app/',
 ].filter(Boolean);
 
 const extra = (process.env.FRONTEND_URL || '').split(',').map(s => s.trim()).filter(Boolean);

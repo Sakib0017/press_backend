@@ -7,13 +7,32 @@ const connectDB = require('../src/config/db');
 // Ensure DB connected before handling request
 let isConnected = false;
 
+function setCors(req, res) {
+  const origin = req.headers.origin || '';
+  // Allow frontend and all vercel previews
+  const allowed = origin.endsWith('.vercel.app') || origin.includes('localhost');
+  if (allowed || !origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*.vercel.app');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  }
+}
+
 module.exports = async (req, res) => {
+  // Handle CORS preflight BEFORE DB connect - otherwise DB failure masks CORS and browser shows CORS error
+  if (req.method === 'OPTIONS') {
+    setCors(req, res);
+    return res.status(200).end();
+  }
+
   if (!isConnected) {
     try {
       await connectDB();
       isConnected = true;
     } catch (e) {
       console.error('DB connect failed in serverless:', e);
+      setCors(req, res);
       const detail = e.message;
       let hint = '';
       if (detail.includes('querySrv ENOTFOUND')) {
