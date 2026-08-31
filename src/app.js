@@ -12,30 +12,34 @@ const searchRoutes = require('./routes/search');
 const app = express();
 
 // CORS - allow Vercel frontend domains
+// Fix: Preflight from https://press-frontend-two.vercel.app to https://press-backend-two.vercel.app was blocked
+// Previous logic worked locally but Vercel serverless needs explicit OPTIONS handling
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://press-frontend-two.vercel.app',
+  'https://press-frontend.vercel.app',
 ].filter(Boolean);
 
-// If FRONTEND_URL contains comma-separated list, expand it
 const extra = (process.env.FRONTEND_URL || '').split(',').map(s => s.trim()).filter(Boolean);
 const originList = [...new Set([...allowedOrigins, ...extra])];
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, cb) => {
-    // allow serverless preview deployments (*.vercel.app)
     if (!origin) return cb(null, true);
     if (originList.includes(origin) || origin.endsWith('.vercel.app')) return cb(null, true);
-    // in production, allow all vercel previews; otherwise check list
-    // For strict mode, uncomment next line to block others:
-    // return cb(new Error('Not allowed by CORS'));
     return cb(null, true);
   },
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
-}));
+  methods: ['GET','POST','PUT','DELETE','OPTIONS','PATCH'],
+  allowedHeaders: ['Content-Type','Authorization','X-Requested-With','Accept','Origin'],
+  exposedHeaders: ['Authorization'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
