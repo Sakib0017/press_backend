@@ -14,7 +14,14 @@ module.exports = async (req, res) => {
       isConnected = true;
     } catch (e) {
       console.error('DB connect failed in serverless:', e);
-      return res.status(500).json({ status: 'error', message: 'Database connection failed', detail: e.message });
+      const detail = e.message;
+      let hint = '';
+      if (detail.includes('querySrv ENOTFOUND')) {
+        hint = ' Fix MONGODB_URI in Vercel: 1) Encode password Skb@12400@Kml -> Skb%4012400%40Kml  2) Host must be cluster0.xxxxx.mongodb.net (not cluster0.mongodb.net)  3) Check Atlas Network Access allow 0.0.0.0/0';
+      } else if (detail.includes('authentication failed')) {
+        hint = ' Check user sakib-admin and password Skb@12400@Kml (encoded as Skb%4012400%40Kml) and DB name pdcl';
+      }
+      return res.status(500).json({ status: 'error', message: 'Database connection failed', detail: detail + hint, database: 'pdcl' });
     }
   }
   return app(req, res);
