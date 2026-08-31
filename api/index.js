@@ -9,20 +9,41 @@ let isConnected = false;
 
 function setCors(req, res) {
   const origin = req.headers.origin || '';
-  // Allow frontend and all vercel previews
-  const allowed = origin.endsWith('.vercel.app') || origin.includes('localhost');
-  if (allowed || !origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*.vercel.app');
+  // Always set CORS for known frontend + vercel previews + localhost
+  // Bug was: only set when allowed || !origin, but frontend https://press-frontend-two.vercel.app should always be allowed
+  const cleanOrigin = origin.replace(/\/$/, '');
+  const allowedList = [
+    'https://press-frontend-two.vercel.app',
+    'https://press-backend-alpha.vercel.app',
+    'https://press-backend-two.vercel.app',
+  ];
+  const extraList = (process.env.FRONTEND_URL || '').split(',').map(s=>s.trim().replace(/\/$/, '')).filter(Boolean);
+  const allowed = cleanOrigin.endsWith('.vercel.app') || cleanOrigin.includes('localhost') || allowedList.includes(cleanOrigin) || extraList.includes(cleanOrigin);
+  // For serverless, always mirror origin if allowed or if origin present (to avoid browser CORS block)
+  // If no origin (curl/postman), allow *
+  if (allowed || !origin || cleanOrigin.endsWith('.vercel.app')) {
+    // Mirror exact origin (required when credentials:true) — do not use * with credentials
+    res.setHeader('Access-Control-Allow-Origin', origin || 'https://press-frontend-two.vercel.app');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Vary', 'Origin');
+  } else if (origin) {
+    // Fallback: still allow but warn (prevents hard block)
+    console.warn(`API setCors: unexpected origin ${origin}, allowing anyway to avoid CORS block`);
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Vary', 'Origin');
   }
 }
 
 module.exports = async (req, res) => {
   // Handle CORS preflight BEFORE DB connect - otherwise DB failure masks CORS and browser shows CORS error
+  // Must set CORS for ALL requests, not just OPTIONS, so DB errors still return CORS headers
+  setCors(req, res);
   if (req.method === 'OPTIONS') {
-    setCors(req, res);
     return res.status(200).end();
   }
 

@@ -12,23 +12,29 @@ const searchRoutes = require('./routes/search');
 const app = express();
 
 // CORS - allow Vercel frontend domains
-// Fix: Preflight from https://press-frontend-two.vercel.app to https://press-backend-two.vercel.app was blocked
-// Previous logic worked locally but Vercel serverless needs explicit OPTIONS handling
+// Your live URLs: frontend https://press-frontend-two.vercel.app , backend https://press-backend-alpha.vercel.app
+// Previous bug: allowedOrigins had trailing slash 'https://press-frontend-two.vercel.app/' -> origin never matches (origin header has no slash)
+// Also frontend was calling https://press-backend-two.vercel.app (WRONG) instead of https://press-backend-alpha.vercel.app
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://press-frontend-two.vercel.app',
+  'https://press-backend-alpha.vercel.app',
+  'https://press-backend-two.vercel.app',
   'https://press-backend-beta.vercel.app',
-  'https://press-frontend-two.vercel.app/',
 ].filter(Boolean);
 
 const extra = (process.env.FRONTEND_URL || '').split(',').map(s => s.trim()).filter(Boolean);
-const originList = [...new Set([...allowedOrigins, ...extra])];
+const originList = [...new Set([...allowedOrigins, ...extra].map(o => o.replace(/\/$/, '')))];
 
 const corsOptions = {
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
-    if (originList.includes(origin) || origin.endsWith('.vercel.app')) return cb(null, true);
+    const cleanOrigin = origin.replace(/\/$/, '');
+    if (originList.includes(cleanOrigin) || cleanOrigin.endsWith('.vercel.app')) return cb(null, true);
+    // Allow all for now to prevent CORS block, but log
+    console.warn(`CORS: allowing unexpected origin ${origin} (not in ${originList.join(',')})`);
     return cb(null, true);
   },
   credentials: true,
@@ -39,7 +45,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+// Express 5 requires named wildcard; use regex for compatibility
+app.options(/.*/, cors(corsOptions));
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
