@@ -1,6 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Doctor = require('./models/Doctor');
+const Admin = require('./models/Admin');
 const Medicine = require('./models/Medicine');
 const MedAdvice = require('./models/MedAdvice');
 const Dose = require('./models/Dose');
@@ -20,6 +21,15 @@ async function seed() {
   console.log(`Connected to ${mongoose.connection.host} / DB: ${dbName}`);
   if (dbName !== 'pdcl') console.warn(`WARNING: Connected DB is ${dbName}, expected pdcl. Check URI path /pdcl?`);
   else console.log('Database pdcl verified ✓');
+
+  // Seed MAIN ADMIN (NOT a doctor) — manages whole prescription system
+  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@press.com').toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
+  let mainAdmin = await Admin.findOne({ email: adminEmail });
+  if (!mainAdmin) {
+    mainAdmin = await Admin.create({ name: 'Main Admin', email: adminEmail, password: adminPassword });
+    console.log(`Seeded MAIN ADMIN (not doctor): ${adminEmail} / ${adminPassword}`);
+  } else console.log(`Main admin exists: ${mainAdmin.email} (not a doctor)`);
 
   // Seed doctors
   let tanbin = await Doctor.findOne({ email: 'tanbin@press.com' });
@@ -151,6 +161,7 @@ async function seed() {
   } else console.log(`Appointments already exist: ${await Appointment.countDocuments()}`);
 
   console.log(`\n=== SEED SUMMARY (DB: ${dbName}) ===`);
+  console.log(`Admins (main, not doctors): ${await Admin.countDocuments()}`);
   console.log(`Doctors: ${await Doctor.countDocuments()}`);
   console.log(`Medicines: ${await Medicine.countDocuments()}`);
   console.log(`MedAdvices: ${await MedAdvice.countDocuments()}`);

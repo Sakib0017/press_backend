@@ -8,6 +8,8 @@ const appointmentRoutes = require('./routes/appointments');
 const prescriptionRoutes = require('./routes/prescriptions');
 const componentRoutes = require('./routes/components');
 const searchRoutes = require('./routes/search');
+const adminRoutes = require('./routes/admin');
+const adminAuthRoutes = require('./routes/adminAuth');
 
 const app = express();
 
@@ -64,6 +66,8 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/components', componentRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/admin/auth', adminAuthRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Fallback
 app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found: '+req.originalUrl }));
